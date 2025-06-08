@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis Results - Spam Detective</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-top: 20px;
+            padding-bottom: 40px;
+        }
+        .header {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .result-container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        .result-header {
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .result-spam {
+            background-color: #f8d7da;
+            color: #842029;
+        }
+        .result-phishing {
+            background-color: #f8d7da;
+            color: #842029;
+        }
+        .result-suspicious {
+            background-color: #fff3cd;
+            color: #664d03;
+        }
+        .result-legitimate {
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
+        .result-robocall {
+            background-color: #f8d7da;
+            color: #842029;
+        }
+        .result-telemarketing {
+            background-color: #fff3cd;
+            color: #664d03;
+        }
+        .result-unknown {
+            background-color: #e2e3e5;
+            color: #41464b;
+        }
+        .score-pill {
+            font-size: 1.2rem;
+            padding: 5px 15px;
+            border-radius: 50px;
+        }
+        .advice-box {
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #e9ecef;
+            margin-top: 20px;
+        }
+        .details-section {
+            margin-top: 30px;
+        }
+        .score-bar {
+            height: 25px;
+            border-radius: 5px;
+        }
+        .message-display {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+            margin-top: 15px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        .score-detail {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .score-label {
+            font-weight: 600;
+        }
+        .back-btn {
+            margin-top: 20px;
+        }
+        .evidence-list {
+            padding-left: 20px;
+        }
+        .evidence-item {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Analysis Results</h1>
+            <p class="lead">Detailed breakdown of your message analysis</p>
+        </div>
+
+        <div class="result-container">
+            <div class="result-header">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h2>Classification: 
+                            <span class="badge result-{{ result.prediction.lower() }}">{{ result.prediction }}</span>
+                        </h2>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <span class="score-pill result-{{ result.prediction.lower() }}">
+                            Confidence: {{ "%.2f"|format(result.confidence) }}%
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12">
+                    <h4>Analyzed Content:</h4>
+                    <div class="message-display">{{ result.message }}</div>
+                </div>
+            </div>
+
+            <div class="advice-box">
+                <h4><i class="bi bi-lightbulb"></i> Recommendation</h4>
+                <p>{{ result.advice }}</p>
+            </div>
+
+            <div class="details-section">
+                <h3>Analysis Breakdown</h3>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Score Components</h5>
+                        
+                        {% for component, score in result.details.items() if component.endswith('_score') %}
+                        <div class="score-detail">
+                            <div class="score-label">{{ component.replace('_score', '').replace('_', ' ').title() }}</div>
+                            <div class="progress">
+                                <div class="progress-bar score-bar 
+                                    {% if score > 70 %}bg-danger
+                                    {% elif score > 40 %}bg-warning
+                                    {% else %}bg-success{% endif %}" 
+                                    role="progressbar" 
+                                    style="width: {{ score }}%" 
+                                    aria-valuenow="{{ score }}" 
+                                    aria-valuemin="0" 
+                                    aria-valuemax="100">{{ "%.2f"|format(score) }}</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5>Evidence Found</h5>
+                        
+                        {% if result.details.keyword_hits %}
+                        <div class="mb-3">
+                            <div class="score-label">Spam Keywords</div>
+                            <ul class="evidence-list">
+                                {% for category, count in result.details.keyword_hits.items() %}
+                                <li class="evidence-item">{{ category }}: {{ count }} matches</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                        
+                        {% if result.details.matched_spam_patterns and result.details.matched_spam_patterns|length > 0 %}
+                        <div class="mb-3">
+                            <div class="score-label">Suspicious Patterns</div>
+                            <p>{{ result.details.pattern_hits }} patterns detected</p>
+                            <ul class="evidence-list">
+                                {% for pattern in result.details.matched_spam_patterns %}
+                                <li class="evidence-item">{{ pattern }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% elif result.details.pattern_hits > 0 %}
+                        <div class="mb-3">
+                            <div class="score-label">Suspicious Patterns</div>
+                            <p>{{ result.details.pattern_hits }} patterns detected (specific patterns not available)</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if result.details.matched_phishing_patterns and result.details.matched_phishing_patterns|length > 0 %}
+                        <div class="mb-3">
+                            <div class="score-label">Phishing Indicators</div>
+                            <p>{{ result.details.phishing_hits }} indicators detected</p>
+                            <ul class="evidence-list">
+                                {% for pattern in result.details.matched_phishing_patterns %}
+                                <li class="evidence-item">{{ pattern }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% elif result.details.phishing_hits > 0 %}
+                        <div class="mb-3">
+                            <div class="score-label">Phishing Indicators</div>
+                            <p>{{ result.details.phishing_hits }} indicators detected (specific patterns not available)</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if result.details.matched_call_patterns and result.details.matched_call_patterns|length > 0 %}
+                        <div class="mb-3">
+                            <div class="score-label">Call Patterns</div>
+                            <p>{{ result.details.call_patterns }} patterns detected</p>
+                            <ul class="evidence-list">
+                                {% for pattern in result.details.matched_call_patterns %}
+                                <li class="evidence-item">{{ pattern }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% elif result.details.call_patterns > 0 %}
+                        <div class="mb-3">
+                            <div class="score-label">Call Patterns</div>
+                            <p>{{ result.details.call_patterns }} patterns detected (specific patterns not available)</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if result.details.risk_reasons %}
+                        <div class="mb-3">
+                            <div class="score-label">Risk Reasons</div>
+                            <ul class="evidence-list">
+                                {% for reason in result.details.risk_reasons %}
+                                <li class="evidence-item">{{ reason }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center back-btn">
+                <a href="/" class="btn btn-primary">Analyze Another Message</a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Always verify the source of communications and be cautious with unexpected messages.</p>
+        </div>
+    </div>
+</body>
+</html>
